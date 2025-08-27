@@ -6,10 +6,11 @@ use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Interfaces\ImageInterface;
 
-function encodeText(string $text): string
+function encodeText(string $text): string // add caesar encoding
 {
     return "<t>$text<t>";
 }
+
 
 function textToBinary(string $text): string
 {
@@ -28,29 +29,24 @@ function loadImage(string $imgPath): ImageInterface
 }
 
 
-function main(): void
+function writeToImage(ImageInterface &$img, string $message): void
 {
-    $imgPath = 'cola.png';
-    $outPath = 'cola2.png';
-    $text = 'i like watches';
-    $encodedText = encodeText($text);
-    $binText = textToBinary($encodedText);
+    $binText = textToBinary($message);
     $bitsCount = strlen($binText);
-    $image = loadImage($imgPath);
-    $width = $image->width();
-    $height = $image->height();
+    $width = $img->width();
+    $height = $img->height();
     $bitsEncoded = 0;
     $row = 0;
     $col = 0;
 
     while ($bitsEncoded < $bitsCount && $row + 1 < $height) {
-        if ($col < $width) {
+        if ($col > 0 && $col < $width) {
             $col += 1;
         } else {
             $col = 0;
             $row += 1;
         }
-        $rgb = $image->pickColor($col, $row);
+        $rgb = $img->pickColor($col, $row);
         // phpcs:ignore
         /** @disregard P1013 */
         $orgRedBinVal = decbin($rgb->red()->toInt());
@@ -58,9 +54,51 @@ function main(): void
         // phpcs:ignore
         /** @disregard P1013 */
         $newRgb = "rgb($newRedVal, {$rgb->green()->toInt()}, {$rgb->blue()->toInt()})";
-        $image->drawPixel($col, $row, $newRgb);
+        $img->drawPixel($col, $row, $newRgb);
         $bitsEncoded += 1;
     }
+}
+
+
+// function readFromImage(ImageInterface &$img): string
+// {
+//     $width = $img->width();
+//     $height = $img->height();
+//     $bitsEncoded = 0;
+//     $row = 0;
+//     $col = 0;
+//     $messageBits = [];
+//     while (true) {
+//         if ($col > 0 && $col < $width) {
+//             $col += 1;
+//         } else {
+//             $col = 0;
+//             $row += 1;
+//         }
+//         $rgb = $img->pickColor($col, $row);
+//         // phpcs:ignore
+//         /** @disregard P1013 */
+//         $orgRedBinVal = decbin($rgb->red()->toInt());
+//         $newRedVal = bindec(substr($orgRedBinVal, 0, -1) . $binText[$bitsEncoded]);
+//         // phpcs:ignore
+//         /** @disregard P1013 */
+//         $newRgb = "rgb($newRedVal, {$rgb->green()->toInt()}, {$rgb->blue()->toInt()})";
+//         $img->drawPixel($col, $row, $newRgb);
+//         $bitsEncoded += 1;
+//     }
+
+//     return "";
+// }
+
+
+function main(): void
+{
+    $imgPath = 'cola.png';
+    $outPath = 'cola2.png';
+    $text = 'i like watches';
+    $encodedText = encodeText($text);
+    $image = loadImage($imgPath);
+    writeToImage($image, $encodedText);
     $image->save($outPath);
 }
 
