@@ -8,13 +8,63 @@ use Intervention\Image\Interfaces\ImageInterface;
 
 const START_MESSAGE_MARKER = '<t>';
 const END_MESSAGE_MARKER = '</t>';
+const CHARS_LOWER_BOUND = 97;
+const CHARS_UPPER_BOUND = 122;
+const ALPHABET_LENGHT = 26;
+const DEFAULT_SHIFT = 3;
 
-
-function encodeText(string $text): string // add caesar encoding
+function encryptText(string $text, int $shift = DEFAULT_SHIFT): string
 {
-    return START_MESSAGE_MARKER . $text . END_MESSAGE_MARKER;
+    $encryptedChars = [];
+    for ($i = 0; $i < strlen($text); $i++) {
+        if (!ctype_alpha($text[$i])) {
+            array_push($encryptedChars, $text[$i]);
+            continue;
+        }
+        $isUpperCase = ctype_upper($text[$i]);
+        $numChar = ord(strtolower($text[$i]));
+        $newNumChar = $numChar + ($shift % ALPHABET_LENGHT);
+        $newNumChar = $newNumChar > CHARS_UPPER_BOUND ?
+            $newNumChar - ALPHABET_LENGHT : $newNumChar;
+        array_push($encryptedChars, $isUpperCase ? strtoupper(chr($newNumChar)) : chr($newNumChar));
+    }
+    return implode("", $encryptedChars);
 }
 
+function decryptText(string $text, int $shift = DEFAULT_SHIFT): string
+{
+    $decryptedChars = [];
+    for ($i = 0; $i < strlen($text); $i++) {
+        if (!ctype_alpha($text[$i])) {
+            array_push($decryptedChars, $text[$i]);
+            continue;
+        }
+        $isUpperCase = ctype_upper($text[$i]);
+        $numChar = ord(strtolower($text[$i]));
+        $newNumChar = $numChar - ($shift % ALPHABET_LENGHT);
+        $newNumChar = $newNumChar < CHARS_LOWER_BOUND ?
+            $newNumChar + ALPHABET_LENGHT : $newNumChar;
+        array_push($decryptedChars, $isUpperCase ? strtoupper(chr($newNumChar)) : chr($newNumChar));
+    }
+    return implode("", $decryptedChars);
+}
+
+
+function encodeMessage(string $message): string
+{
+    return START_MESSAGE_MARKER . encryptText($message) . END_MESSAGE_MARKER;
+}
+
+function decodeMessage(string $message): string
+{
+    return decryptText(
+        substr(
+            $message,
+            strlen(START_MESSAGE_MARKER),
+            -strlen(END_MESSAGE_MARKER)
+        )
+    );
+}
 
 function textToBinary(string $text): string
 {
@@ -33,8 +83,9 @@ function loadImage(string $imgPath): ImageInterface
 }
 
 
-function writeToImage(ImageInterface &$img, string $message): void
+function writeToImage(ImageInterface &$img, string $text): void
 {
+    $message = encodeMessage($text);
     $binText = textToBinary($message);
     $bitsCount = strlen($binText);
     $width = $img->width();
@@ -111,7 +162,7 @@ function readFromImage(ImageInterface &$img): string | null
         array_push($tempBits, $redBinVal[strlen($redBinVal) - 1]);
     }
     $message = $success ? implode("", $messageChars) : null;
-    return $message;
+    return decodeMessage($message);
 }
 
 
@@ -120,9 +171,8 @@ function main(): void
     $imgPath = 'cola.png';
     $outPath = 'cola2.png';
     $text = 'i like watches';
-    $encodedText = encodeText($text);
     $image = loadImage($imgPath);
-    writeToImage($image, $encodedText);
+    writeToImage($image, $text);
     $image->save($outPath);
     $image2 = loadImage($outPath);
     echo readFromImage($image2) . "\r\n";
