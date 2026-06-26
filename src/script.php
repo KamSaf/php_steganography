@@ -161,7 +161,7 @@ function readFromImage(ImageInterface &$img): string | null
 }
 
 
-function main(): void
+function _testRun(): void
 {
     $imgPath = 'cola.png';
     $outPath = 'cola2.png';
@@ -174,4 +174,6 @@ function main(): void
 }
 
 
-main();
+if (basename(__FILE__) === basename($_SERVER['SCRIPT_FILENAME'])) {
+    _testRun();
+}
