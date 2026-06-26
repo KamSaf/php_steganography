@@ -82,7 +82,6 @@ function loadImage(string $imgPath): ImageInterface
     return $manager->read($imgPath);
 }
 
-
 function writeToImage(ImageInterface &$img, string $text): void
 {
     $message = encodeMessage($text);
@@ -102,13 +101,10 @@ function writeToImage(ImageInterface &$img, string $text): void
             $row += 1;
         }
         $rgb = $img->pickColor($col, $row);
-        // phpcs:ignore
-        /** @disregard P1013 */
-        $orgRedBinVal = decbin($rgb->red()->toInt());
+        $channels = $rgb->channels();
+        $orgRedBinVal = $channels[0]->value();
         $newRedVal = bindec(substr($orgRedBinVal, 0, -1) . $binText[$bitsEncoded]);
-        // phpcs:ignore
-        /** @disregard P1013 */
-        $newRgb = "rgb($newRedVal, {$rgb->green()->toInt()}, {$rgb->blue()->toInt()})";
+        $newRgb = "rgb($newRedVal, {$channels[1]}, {$channels[2]})";
         $img->drawPixel($col, $row, $newRgb);
         $bitsEncoded += 1;
     }
@@ -156,9 +152,8 @@ function readFromImage(ImageInterface &$img): string | null
             break;
         }
         $rgb = $img->pickColor($col, $row);
-        // phpcs:ignore
-        /** @disregard P1013 */
-        $redBinVal = decbin($rgb->red()->toInt());
+        $channels = $rgb->channels();
+        $redBinVal = decbin(intval($channels[0]->value()));
         array_push($tempBits, $redBinVal[strlen($redBinVal) - 1]);
     }
     $message = $success ? implode("", $messageChars) : null;
