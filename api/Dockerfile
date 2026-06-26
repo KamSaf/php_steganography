@@ -1,15 +1,24 @@
 FROM php:8.3-apache
 
-RUN apt update && apt install -y \
+# =========================
+# System dependencies and PHP extensions
+# =========================
+RUN apt-get update && apt-get install -y \
     libzip-dev \
     unzip \
     git \
     && docker-php-ext-install zip opcache \
     && a2enmod rewrite headers expires deflate
 
+# =========================
+# Apache hardening + config
+# =========================
+
+# Disable directory listing, set server name
 RUN echo "ServerName localhost" > /etc/apache2/conf-available/servername.conf \
     && a2enconf servername
 
+# Security headers and hardening
 RUN echo "\
 <IfModule mod_headers.c>\n\
     Header always set X-Content-Type-Options \"nosniff\"\n\
@@ -20,6 +29,7 @@ RUN echo "\
 " > /etc/apache2/conf-available/security.conf \
     && a2enconf security
 
+# Cache, compression
 RUN echo "\
 <IfModule mod_expires.c>\n\
     ExpiresActive On\n\
@@ -33,6 +43,9 @@ RUN echo "\
 " > /etc/apache2/conf-available/cache.conf \
     && a2enconf cache
 
+# =========================
+# PHP OPcache
+# =========================
 RUN echo "\
 opcache.enable=1\n\
 opcache.memory_consumption=128\n\
@@ -42,10 +55,16 @@ opcache.validate_timestamps=0\n\
 opcache.revalidate_freq=0\n\
 " > /usr/local/etc/php/conf.d/opcache.ini
 
+# =========================
+# App directory
+# =========================
 WORKDIR /var/webapp/api
 
 COPY ./api /var/webapp/api
 
+# =========================
+# Composer
+# =========================
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 RUN COMPOSER_ALLOW_SUPERUSER=1 composer install \
@@ -53,12 +72,16 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 composer install \
     --optimize-autoloader \
     --classmap-authoritative
 
+# =========================
+# Apache document root
+# =========================
 ENV APACHE_DOCUMENT_ROOT=/var/webapp/api/public
 
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
     /etc/apache2/sites-available/*.conf \
     /etc/apache2/apache2.conf
 
+# Secure Apache defaults
 RUN echo "\
 <Directory /var/webapp/api/public>\n\
     AllowOverride None\n\
@@ -68,10 +91,16 @@ RUN echo "\
 " > /etc/apache2/conf-available/app.conf \
     && a2enconf app
 
+# =========================
+# Permissions
+# =========================
 RUN chown -R www-data:www-data /var/webapp/api \
     && find /var/webapp/api -type d -exec chmod 755 {} \; \
     && find /var/webapp/api -type f -exec chmod 644 {} \;
 
+# =========================
+# Ports
+# =========================
 EXPOSE 80
 
 CMD ["apache2-foreground"]
